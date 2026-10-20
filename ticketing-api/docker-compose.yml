@@ -1,0 +1,120 @@
+# Local development infrastructure for the ticketing API.
+# Start: pnpm infra:up (databases) / pnpm infra:tools (+ browser UIs)   Stop: pnpm infra:down   Wipe data: pnpm infra:reset
+# DEV ONLY: default credentials, no auth on Mongo/Redis — ports are bound to localhost.
+name: ticketing
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: ticketing
+      POSTGRES_PASSWORD: ticketing
+      POSTGRES_DB: ticketing
+    ports: ["127.0.0.1:5432:5432"]
+    volumes: [pg-data:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ticketing -d ticketing"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  # Single-node replica set so multi-document transactions and change streams work.
+  mongo:
+    image: mongo:8.0
+    command: ["--replSet", "rs0", "--bind_ip_all"]
+    ports: ["127.0.0.1:27017:27017"]
+    volumes: [mongo-data:/data/db]
+    healthcheck:
+      # Initiates the replica set on first start, then reports healthy once it is primary.
+      test:
+        - CMD-SHELL
+        - >
+          mongosh --quiet --eval
+          "try { rs.status().ok } catch (e) { rs.initiate({_id:'rs0',members:[{_id:0,host:'localhost:27017'}]}).ok }"
+          | grep -q 1
+      interval: 5s
+      timeout: 10s
+      retries: 30
+      start_period: 10s
+
+  redis:
+    image: redis:8-alpine
+    command: ["redis-server", "--appendonly", "yes", "--maxmemory-policy", "noeviction"]
+    ports: ["127.0.0.1:6379:6379"]
+    volumes: [redis-data:/data]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  # Kafka API-compatible broker. Host clients use localhost:19092.
+  redpanda:
+    image: redpandadata/redpanda:v26.2.4
+    command:
+      - redpanda
+      - start
+      - --mode=dev-container
+      - --smp=1
+      - --memory=1G
+      - --kafka-addr=internal://0.0.0.0:9092,external://0.0.0.0:19092
+      - --advertise-kafka-addr=internal://redpanda:9092,external://localhost:19092
+    ports: ["127.0.0.1:19092:19092"]
+    volumes: [redpanda-data:/var/lib/redpanda/data]
+    healthcheck:
+      test: ["CMD-SHELL", "rpk cluster health | grep -E 'Healthy:.+true'"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+
+  # Catches all outgoing email. Web UI: http://localhost:8025
+  mailpit:
+    image: axllent/mailpit:v1.31.5
+    ports: ["127.0.0.1:1025:1025", "127.0.0.1:8025:8025"]
+
+  # ── Optional browser UIs (dev only, localhost-bound). Start with: pnpm infra:tools ──
+  # MongoDB browser: http://localhost:8081  (login: dev / dev)
+  mongo-express:
+    image: mongo-express:1.0.2-20-alpine3.19
+    profiles: ["tools"]
+    depends_on:
+      mongo:
+        condition: service_healthy
+    environment:
+      ME_CONFIG_MONGODB_URL: mongodb://mongo:27017/?directConnection=true
+      ME_CONFIG_BASICAUTH_ENABLED: "true"
+      ME_CONFIG_BASICAUTH_USERNAME: dev
+      ME_CONFIG_BASICAUTH_PASSWORD: dev
+    ports: ["127.0.0.1:8081:8081"]
+
+  # Redis browser: http://localhost:5540  (connection to the local redis is preconfigured)
+  redisinsight:
+    image: redis/redisinsight:3.8.0
+    profiles: ["tools"]
+    depends_on:
+      redis:
+        condition: service_healthy
+    environment:
+      RI_REDIS_HOST: redis
+      RI_REDIS_PORT: "6379"
+      RI_REDIS_ALIAS: ticketing-local
+    ports: ["127.0.0.1:5540:5540"]
+    volumes: [redisinsight-data:/data]
+
+  # Kafka browser (topics, messages, consumer groups): http://localhost:8080
+  redpanda-console:
+    image: redpandadata/console:v3.12.0
+    profiles: ["tools"]
+    depends_on:
+      redpanda:
+        condition: service_healthy
+    environment:
+      KAFKA_BROKERS: redpanda:9092
+    ports: ["127.0.0.1:8080:8080"]
+
+volumes:
+  pg-data:
+  mongo-data:
+  redis-data:
+  redpanda-data:
+  redisinsight-data:

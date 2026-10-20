@@ -1,0 +1,19 @@
+# OS / editor
+.DS_Store
+.idea/
+.vscode/
+
+# Secrets — only the documented templates are committed
+.env
+.env.*
+!.env.example
+
+# Dependencies & build output (each app also has its own .gitignore)
+node_modules/
+*.log
+
+# Personal Claude Code settings
+.claude/settings.local.json
+
+# Third-party course material (HLD source PDF) — kept local, not published
+docs/hld/

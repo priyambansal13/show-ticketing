@@ -1,0 +1,11 @@
+node_modules
+dist
+coverage
+.env
+.env.*
+!.env.example
+*.log
+.DS_Store
+# Prisma client is generated from prisma/schema.prisma
+/src/generated/prisma
+*.tsbuildinfo

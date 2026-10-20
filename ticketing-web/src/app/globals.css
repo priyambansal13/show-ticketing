@@ -1,0 +1,99 @@
+@import 'tailwindcss';
+
+/* Design tokens. Contrast checked for WCAG 2.2 AA: text ≥ 4.5:1, UI ≥ 3:1 on --background. */
+:root {
+  --background: #ffffff;
+  --foreground: #18181b;
+  --muted: #f4f4f5;
+  --muted-foreground: #52525b;
+  --card: #ffffff;
+  --border: #d4d4d8;
+  --input: #a1a1aa;
+  --primary: #c8102e;
+  --primary-foreground: #ffffff;
+  --secondary: #f4f4f5;
+  --secondary-foreground: #18181b;
+  --accent: #fef2f2;
+  --success: #166534;
+  --warning: #92400e;
+  --danger: #b91c1c;
+  --ring: #c8102e;
+  /* seat map */
+  --seat-available: #ffffff;
+  --seat-available-border: #15803d;
+  --seat-selected: #15803d;
+  --seat-unavailable: #e4e4e7;
+  --seat-unavailable-fg: #71717a;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #09090b;
+    --foreground: #fafafa;
+    --muted: #18181b;
+    --muted-foreground: #a1a1aa;
+    --card: #111113;
+    --border: #3f3f46;
+    --input: #71717a;
+    --primary: #f43f5e;
+    --primary-foreground: #0b0b0c;
+    --secondary: #27272a;
+    --secondary-foreground: #fafafa;
+    --accent: #2a1215;
+    --success: #4ade80;
+    --warning: #fbbf24;
+    --danger: #f87171;
+    --ring: #fb7185;
+    --seat-available: #09090b;
+    --seat-available-border: #4ade80;
+    --seat-selected: #22c55e;
+    --seat-unavailable: #27272a;
+    --seat-unavailable-fg: #a1a1aa;
+  }
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-card: var(--card);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-accent: var(--accent);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-danger: var(--danger);
+  --color-ring: var(--ring);
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+}
+
+@layer base {
+  * {
+    border-color: var(--border);
+  }
+  body {
+    background: var(--background);
+    color: var(--foreground);
+  }
+  :focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
