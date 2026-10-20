@@ -1,7 +1,7 @@
 # Ticketing System (BookMyShow-style) — Implementation Plan
 
-> Source HLD: [`docs/hld/ticketing-system-hld.pdf`](hld/ticketing-system-hld.pdf) (text extract: `hld/ticketing-system-hld.txt`)
-> Stack: **Next.js 16.4** frontend · **NestJS 12** backend · Node 24 · PostgreSQL 17 · MongoDB 8 · Redis 8 · Kafka (Redpanda) — two separate repos
+> Source HLD: [`docs/hld/ticketing-system-hld.pdf`](hld/ticketing-system-hld.pdf) (text extract: `hld/ticketing-system-hld.txt`) — local only, not published
+> Stack: **Next.js 16.4** frontend · **NestJS 12** backend · Node 24 · PostgreSQL 17 · MongoDB 8 · Redis 8 · Kafka (Redpanda) — one monorepo, two apps
 > Users: **Customer** (browse & book) and **Manager** (creates venues, events, shows) — two separate logins.
 
 ---
@@ -17,7 +17,7 @@
 | D5 | Local message broker | **Redpanda** (Kafka API-compatible, single container) |
 | D6 | ORM / ODM | **Prisma** (Postgres) + **Mongoose** (MongoDB) |
 | D7 | Job scheduling | **BullMQ** (Redis) for hold-expiry delayed jobs and retries |
-| D8 | Repositories | **Two separate git repos**: `ticketing-api` (owns local infra) and `ticketing-web`; shared docs/skills in the parent workspace folder |
+| D8 | Repositories | **One monorepo** (`priyambansal13/show-ticketing`, changed from two repos at first push): `ticketing-api/` (owns local infra) and `ticketing-web/` as independent apps; shared docs/skills at the root |
 | D9 | Runtime & tooling | **Node 24**, **pnpm 12** (install scripts allow-listed), NestJS 12 (ESM) with **Vitest** + **oxlint**, Prisma **7.10** (stable; npm `latest` tag pointed at an 8.0 RC), Next.js 16.4 |
 | D10 | Web ↔ API contract | API publishes **OpenAPI** generated from its zod DTOs; web generates types with `openapi-typescript` (`pnpm gen:api`) — replaces the old shared-package idea |
 
@@ -51,7 +51,7 @@
 
 ```
 ticketing-system/                     # workspace folder (not a repo): docs, CLAUDE.md, .claude/
-├─ ticketing-api/                     # git repo — NestJS 12 (ESM), Node 24, pnpm 12
+├─ ticketing-api/                     # NestJS 12 (ESM), Node 24, pnpm 12
 │  ├─ docker-compose.yml              # local infra: postgres, mongo, redis, redpanda, mailpit
 │  ├─ prisma/
 │  │  ├─ schema.prisma                # PostgreSQL model (§4.1)
@@ -68,7 +68,7 @@ ticketing-system/                     # workspace folder (not a repo): docs, CLA
 │  │     ├─ events/schemas/           # venues, seat_layouts, events, shows (Mongo)
 │  │     └─ auth, users, inventory, booking, payment, notification, audit, reports   (upcoming)
 │  └─ test/integration/               # Testcontainers suites (*.int-spec.ts)
-└─ ticketing-web/                     # git repo — Next.js 16.4, React 19.3, Tailwind 4, Node 24
+└─ ticketing-web/                     # Next.js 16.4, React 19.3, Tailwind 4, Node 24
    └─ src/
       ├─ app/                         # (customer), manager/, admin/ route groups (§7)
       └─ lib/api/                     # generated OpenAPI types + typed fetchers + query hooks

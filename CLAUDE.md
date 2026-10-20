@@ -1,24 +1,24 @@
 # CLAUDE.md — Ticketing System (BookMyShow-style)
 
-Multi-user event ticketing platform. **Customers** browse and book seats; **Managers** create venues, seat layouts, events and shows. Built from the HLD in `docs/hld/ticketing-system-hld.pdf`.
+Multi-user event ticketing platform. **Customers** browse and book seats; **Managers** create venues, seat layouts, events and shows. Built from the HLD in `docs/hld/ticketing-system-hld.pdf` (kept locally, not published — `docs/hld/` is git-ignored).
 
 **Read `docs/IMPLEMENTATION_PLAN.md` before starting any feature** — it is the source of truth for data model, APIs, booking flow, and phase order. Update its progress checkboxes when a task is done.
 
 ## Layout & stack
 
-Run Claude Code from **this folder** (`ticketing-system/`) so the shared skills, agents and this file load. It is a workspace folder, not a git repo; the two apps below are **separate git repositories**.
+Run Claude Code from **this folder** (`ticketing-system/`) so the shared skills, agents and this file load. The whole folder is **one git repository** (monorepo, GitHub `priyambansal13/show-ticketing`); the two apps keep their own `package.json`, lockfile and tooling.
 
 ```
 ticketing-system/
 ├─ CLAUDE.md, docs/, .claude/      # shared plan, standards, skills, agents
-├─ ticketing-api/                  # git repo — NestJS 12 API + local infra (docker-compose.yml)
-└─ ticketing-web/                  # git repo — Next.js 16.4 web app
+├─ ticketing-api/                  # NestJS 12 API + local infra (docker-compose.yml)
+└─ ticketing-web/                  # Next.js 16.4 web app
 ```
 
-- Runtime: **Node 24** (`.nvmrc` + `engines` + `engine-strict` in both repos), **pnpm 12** (`packageManager` pinned).
+- Runtime: **Node 24** (`.nvmrc` + `engines` + `engine-strict` in both apps), **pnpm 12** (`packageManager` pinned).
 - `ticketing-api` — NestJS 12 (ESM) modular monolith · Prisma 7.10 (driver adapter `@prisma/adapter-pg`, client generated to `src/generated/prisma`) → PostgreSQL 17 · Mongoose 9 → MongoDB 8 (single-node replica set) · ioredis 6 → Redis 8 · KafkaJS → Redpanda · nestjs-pino · Terminus · Vitest + Testcontainers · oxlint.
 - `ticketing-web` — Next.js 16.4 (App Router, `cacheComponents`), React 19.3, Tailwind 4, TanStack Query, react-hook-form + zod, socket.io-client. **Read `ticketing-web/AGENTS.md`: Next 16 APIs differ from older versions — check `node_modules/next/dist/docs/` before writing Next code.**
-- pnpm blocks dependency install scripts by default; allowed/denied builds are listed in each repo's `pnpm-workspace.yaml` (`allowBuilds`). Add an entry deliberately when a new native dependency needs it.
+- pnpm blocks dependency install scripts by default; allowed/denied builds are listed in each app's `pnpm-workspace.yaml` (`allowBuilds`). Add an entry deliberately when a new native dependency needs it.
 
 ## Commands
 
@@ -70,7 +70,7 @@ Never put seat state or selling prices in MongoDB (show `pricing` is configurati
 4. **Auth**: two portals, one `users` table with `role`. Every non-public route is protected by the global `JwtAuthGuard`; use `@Public()` to opt out, `@Roles('MANAGER')` for manager routes, and the ownership guard for any manager resource by id.
 5. **Module boundaries**: a module may only call another module through its exported service — no reaching into another module's repositories/models. Cross-module side effects go through domain events. (Modules will be split into microservices in Phase 8.)
    - **Documented exception — payment settlement**: invariant 4 requires booking, seats and payment to change in one transaction, so `PaymentService` passes its transaction to `BookingService.lockForSettlement / confirmInTx / lateConfirmInTx`. Refund rows are owned by the `ledger` module (`RefundRequests`), used by both booking and payment.
-6. **API contract across repos**: request/response schemas are zod DTOs in `ticketing-api` and are published as OpenAPI (`/api/docs-json`, Phase 1). `ticketing-web` generates its API types from it (`pnpm gen:api` → `src/lib/api/schema.d.ts`) — never hand-write API response types in the web repo. A breaking contract change needs a coordinated PR in both repos.
+6. **API contract across apps**: request/response schemas are zod DTOs in `ticketing-api` and are published as OpenAPI (`/api/docs-json`, Phase 1). `ticketing-web` generates its API types from it (`pnpm gen:api` → `src/lib/api/schema.d.ts`) — never hand-write API response types in the web app. A breaking contract change updates both apps in the same PR (API change + `pnpm gen:api` + web fixes).
 7. Money: `numeric(10,2)` in PG, integer minor units (paise) when calling payment providers. Timestamps: UTC `timestamptz`.
 8. Secrets only via env (`.env.example` documents every variable). No secrets in code or logs.
 
@@ -98,7 +98,7 @@ Never put seat state or selling prices in MongoDB (show `pricing` is configurati
 - Next.js: Server Components by default; `"use client"` only for interactivity. Customer pages under `app/(customer)`, manager under `app/manager`, admin under `app/admin`. Data fetching via TanStack Query hooks in `src/lib/api/`.
 - File names kebab-case; classes PascalCase; DB columns snake_case (Prisma `@map`).
 - Tests are required for: booking/payment state transitions, guards, and any concurrency-sensitive code.
-- Conventional commits (`feat(booking): …`, `fix(auth): …`), made inside the repo the change belongs to.
+- Conventional commits (`feat(booking): …`, `fix(auth): …`), scoped to the app the change belongs to (`feat(web): …`, `fix(api/booking): …`).
 - ESM in the API: relative imports end in `.js` (`import { X } from './x.js'`).
 
 ## Project skills & agents
